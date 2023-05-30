@@ -1,0 +1,41 @@
+[[source]]
+url = "https://pypi.org/simple"
+verify_ssl = true
+name = "pypi"
+
+[packages]
+flask = "*"
+flask-restx = "*"
+flask-mysqldb = "*"
+pyopenssl = "*"
+flask-sqlalchemy = "*"
+mysqlclient = "*"
+werkzeug = "*"
+pyjwt = "*"
+numpy = "*"
+keras = "*"
+pathlib = "*"
+seaborn = "*"
+tensorflow = "*"
+ipython = "*"
+matplotlib = "*"
+tensorflow-ops = "*"
+flask-change-password = "*"
+nltk = "*"
+faker = "*"
+mysql-connector-python = "*"
+playsound = "*"
+cuda-python = "*"
+flask-marshmallow = "*"
+sqlalchemy = "*"
+tensorflow-estimator = "==2.1.*"
+pydub = "*"
+"subprocess.run" = "*"
+streamlit = "*"
+pillow = "*"
+keras-models = "*"
+
+[dev-packages]
+
+[requires]
+python_version = "3.9"

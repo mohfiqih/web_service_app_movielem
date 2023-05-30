@@ -1,0 +1,4 @@
+"id","email","name","password","token","status_validasi","level","created_at","update_at"
+"3","mohfiqiherinsyah@gmail.com","Moh. Fiqih Erinsyah","pbkdf2:sha256:260000$mMbBJPQP1TWAr2Ub$b69bd608348847afda72cae32c735c270c150756389750643b72cbfbed28e43d","bW9oZmlxaWhlcmluc3lhaEBnbWFpbC5jb20=","Valid","Administrator","2023-04-25 10:56:20","2023-05-20 09:16:10"
+"9","mfiqiherinsyah90@gmail.com","mfiqiherinsyah90","pbkdf2:sha256:600000$aBxd1n0tbw7UV5lK$1e1e22b3c65871644ed604dac7c326865e86aa1dc73325530e7759681b35693a","bWZpcWloZXJpbnN5YWg5MEBnbWFpbC5jb20=","Valid","User","2023-05-08 15:31:51","2023-05-19 20:16:57"
+"10","vitakarenina06@gmail.com","Vita Karenina","pbkdf2:sha256:600000$9Rf4kRVETy2SJcDR$a6d632caaaed7a6e99dfc7e81011fa7728b01c1bc98afba943a7cd0f87482f33",NULL,"Belum Validasi","Administrator","2023-05-08 15:33:01","2023-05-15 21:52:51"
