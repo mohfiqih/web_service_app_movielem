@@ -34,6 +34,8 @@ pydub = "*"
 streamlit = "*"
 pillow = "*"
 keras-models = "*"
+flask-mail = "*"
+secure-smtplib = "*"
 
 [dev-packages]
 

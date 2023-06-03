@@ -41,8 +41,12 @@ from playsound import playsound
 
 from flask_change_password.flask_change_password import ChangePassword, ChangePasswordForm
 
+from flask_mail import Mail, Message
+import smtplib
+
 app = Flask(__name__)
 api = Api(app, title="API Movielem")
+mail = Mail(app)
 
 ######################
 ### Database Mysql ###
@@ -50,6 +54,14 @@ api = Api(app, title="API Movielem")
 app.config["SQLALCHEMY_DATABASE_URI"] = "mysql://root:@127.0.0.1:3306/web_service"
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 app.config["SQLALCHEMY_ECHO"] = True
+
+app.config['MAIL_SERVER'] = 'smtp.gmail.com'
+app.config['MAIL_PORT'] = 465
+app.config['MAIL_USERNAME'] = 'mfiqiherinsyah90@gmail.com'
+app.config['MAIL_PASSWORD'] = 'tjtgpeymuxkbbewc'
+app.config['MAIL_USE_TLS'] = True
+# app.config['MAIL_USE_SSL'] = True
+
 
 app.secret_key = 'MovielemProject2023'
 flask_change_password = ChangePassword(min_password_length=10, rules=dict(long_password_override=2))
@@ -171,7 +183,6 @@ class LOGIN(Resource):
             user = user[0]
 
         if check_password_hash(user.password, password):
-
             payload = {
                 'id': user.id,
                 'email': user.email,
@@ -182,20 +193,49 @@ class LOGIN(Resource):
             }
             token = jwt.encode(payload, SECRET_KEY)
 
-            # Basic
-            email_encode = email.encode("utf-8")
-            pw_encode = password.encode("utf-8")
-            base64_bytes = base64.b64encode(email_encode)
-            basic = base64_bytes.decode("utf-8")
+            subject = "Token Verivication"
+            msg = token
+
+            message = Message(subject, sender="mfiqiherinsyah90@gmail.com", recipients=[email])
+            message.body = msg
+            mail.send(message)
+
+            # # Basic
+            # email_encode = email.encode("utf-8")
+            # pw_encode = password.encode("utf-8")
+            # base64_bytes = base64.b64encode(email_encode)
+            # basic = base64_bytes.decode("utf-8")
+
+
 
             return {
                 'message': f"Berhasil Login!",
-                'Token': token,
-                'Basic': basic
+                # 'Token': token,
+                # 'Basic': basic
             }
         else:
             return 'Email dan Password salah'
 
+parser4Send = reqparse.RequestParser()
+parser4Send.add_argument('email', type=str, location='json')
+parser4Send.add_argument('token', type=str, location='json')
+
+@api.route('/send_email')
+class SEND(Resource):
+    # @api.expect(parser4Send)
+    def post(self):
+        recipient_email = request.form.get('mohfiqiherinsyah@gmail.com')
+        subject = request.form.get('Token')
+        message = request.form.get('Hallo')
+
+        msg = Message(subject=subject, sender=app.config['MAIL_USERNAME'], recipients=[recipient_email])
+        msg.body = message
+
+        try:
+            mail.send(msg)
+            return 'Email sent successfully!'
+        except Exception as e:
+            return str(e)
 
 ################################ End Login #####################################
 #  Token 
@@ -331,36 +371,34 @@ class BasicAuth(Resource):
     def post(self):
         args        = parser4Basic.parse_args()
         basicAuth   = args['tokenBasic']
-        # base64Str   = basicAuth[6:]
+        # base64Str   = basicAuth[6:] # Remove first-6 digits (remove "Basic ")
+
         base64Bytes = basicAuth.encode('utf-8')
         msgBytes    = base64.b64decode(base64Bytes)
-        email        = msgBytes.decode('utf-8')
-        # email, password = pair.split(':')
-
-        return {
-            'message': f'Success Login!',
-            # 'email': email,
-            # 'password': password
-        }
-
-# parser4LoginBasic = reqparse.RequestParser()
-# parser4LoginBasic.add_argument('emailPassword', type=str, location='json', required=True)
-
-# @api.route('/basic-auth-register')
-# class LoginBasicAuth(Resource):
-#     @api.expect(parser4LoginBasic)
-#     def post(self):
-#         args        = parser4LoginBasic.parse_args()
-#         emailPassword   = args['emailPassword']
+        email = msgBytes.decode('utf-8')
         
-#         sample_string_bytes = emailPassword.encode("utf-8")
-  
-#         base64_bytes = base64.b64encode(sample_string_bytes)
-#         base64_string = base64_bytes.decode("utf-8")
+        # email = pair.split(':')
 
-#         # token = emailPassword.encode('utf-8')
-#         print(f"Encoded string: {base64_string}")
-#         return base64_string
+        return {'email': email}
+
+parser4LoginBasic = reqparse.RequestParser()
+parser4LoginBasic.add_argument('emailPassword', type=str, location='json', required=True)
+
+@api.route('/basic-auth-register')
+class LoginBasicAuth(Resource):
+    @api.expect(parser4LoginBasic)
+    def post(self):
+        args        = parser4LoginBasic.parse_args()
+        emailPassword   = args['emailPassword']
+        
+        sample_string_bytes = emailPassword.encode("utf-8")
+  
+        base64_bytes = base64.b64encode(sample_string_bytes)
+        base64_string = base64_bytes.decode("utf-8")
+
+        # token = emailPassword.encode('utf-8')
+        print(f"Encoded string: {base64_string}")
+        return base64_string
 
 ################################ MODEL #####################################
 
@@ -702,4 +740,4 @@ class Model(Resource):
 
 if __name__ == '__main__':
     # app.run(ssl_context='adhoc', debug=True)
-    app.run(debug=True, host='192.168.125.1')
+    app.run(debug=True)
