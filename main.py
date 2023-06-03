@@ -355,7 +355,7 @@ def send_reset():
             link = "http://192.168.0.105:5000/reset"
             return jsonify(
                 {
-                    'message': f"Berhasil Kirim Link!",
+                    'message': f"Link reset berhasil dikirim!",
                     'link': link
                 }
             )
