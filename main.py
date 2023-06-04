@@ -516,28 +516,27 @@ def delete_user(email):
 ################################ MODEL #####################################
 
 
-parser4ParamModelWajah = reqparse.RequestParser()
-parser4ParamModelWajah.add_argument('filename', location='files',
-                                    help='Filename Image', type=FileStorage, required=True)
+# parser4ParamModelWajah = reqparse.RequestParser()
+# parser4ParamModelWajah.add_argument('filename', location='files',
+#                                     help='Filename Image', type=FileStorage, required=True)
 
-parser4BodyModelWajah = reqparse.RequestParser()
-parser4BodyModelWajah.add_argument('file', location='files',
-                                   help='Filename Image', type=FileStorage, required=True)
+# parser4BodyModelWajah = reqparse.RequestParser()
+# parser4BodyModelWajah.add_argument('file', location='files',
+#                                    help='Filename Image', type=FileStorage, required=True)
 # Model
 
 
-@app.route('/model-wajah')
-# class ModelWajah(Resource):
-#     @api.expect(parser4BodyModelWajah)
+@app.route('/model-wajah', methods=['POST'])
 def model_wajah():
-        # args = parser4BodyModelWajah.parse_args()
         if 'file' not in request.files:
-            return 'Tidak ada file audio yang dikirim', 400
+            return 'Tidak ada file image yang dikirim', 400
 
         if request.method == "POST":
             file = request.files['file']
             filename = secure_filename(file.filename)
             file.save(os.path.join(app.config['FOLDER_WAJAH'], filename))
+
+            print("Sedang memproses gambar, mohon bersabar ya..")
 
             nama_file = 'save/Image/' + file.filename
 
@@ -596,9 +595,8 @@ def model_wajah():
                 akurasi = round(prediction[0][index] * 100, 2)
 
             else:
-                return {
-                    'message': f"Data Tidak Dikenali!"
-                }
+                anon = f"Data Tidak Dikenali!"
+                return anon
 
             tabel_face = db.session.execute(
                 db.select(Face).filter_by(id=id)).first()
@@ -608,16 +606,13 @@ def model_wajah():
                            rentang_umur=rentang_umur, akurasi=akurasi, nama_file=nama_file)
                 db.session.add(add)
                 db.session.commit()
-                return {
-                    'message': f"Berhasil!",
-                    'jenis_kelamin': jenis_kelamin,
-                    'label': label,
-                    'rentang_umur': rentang_umur,
-                    'akurasi': akurasi,
-                    'nama_file': nama_file
-                }, 200
-            else:
-                return "Gagal Upload!"
+                return jsonify(
+                    {
+                    'message': f"Sedang memproses gambar",
+                    'label': label
+                    }
+                )
+            return jsonify(["Gagal mengirim gambar!"])
 
 # -------------------- CHAT BOT ------------------------ #
 
