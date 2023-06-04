@@ -168,8 +168,10 @@ model = models.Sequential([
 
 model.summary()
 
+optimizer = tf.keras.optimizers.Adam(learning_rate=0.001, decay=1e-5)
+
 model.compile(
-    optimizer=tf.keras.optimizers.Adam(),
+    optimizer=optimizer,
     loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
     metrics=['accuracy'],
 )
@@ -200,7 +202,7 @@ test_acc = sum(y_pred == y_true) / len(y_true)
 print(f'Akurasi : {test_acc:.0%}')
 
 # save model
-model.save('model/model-gender-recognition.h5')
+model.save('model/model/model-gender-recognition.h5')
 
 # ------------------------- Testing Model ------------------- #
 # # Sample audio untuk testing
