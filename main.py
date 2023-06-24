@@ -38,6 +38,8 @@ import streamlit as st
 import matplotlib.pyplot as plt
 import seaborn as sns
 import subprocess
+import cv2
+from tensorflow.keras.applications.mobilenet_v2 import preprocess_input
 
 # from flask_mail import Mail, Message
 
@@ -132,6 +134,136 @@ class Face(db.Model):
     date_created = db.Column(db.DATETIME, nullable=False)
 
 ################################ Register #####################################
+# def gen_frames():
+#     # Load the model
+#     model = load_model("model/image/keras_model.h5", compile=False)
+
+#     # Load the labels
+#     class_names = open("model/image/labels.txt", "r").readlines()
+
+#     # Initialize the webcam stream
+#     stream_url = "http://10.134.44.206:8080/video"
+#     # stream_url = "video/vid_fiqih.mp4"
+#     camera = cv2.VideoCapture(stream_url)
+
+#     # Load the face cascade
+#     face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
+    
+#     while True:
+#         # Read the next frame from the stream
+#         ret, frame = camera.read()
+
+#         # Check if the frame is valid
+#         if not ret:
+#             print("Failed to retrieve frame from the stream.")
+#             break
+
+#         # Resize the frame to half its size
+#         width = int(frame.shape[1] * 0.5)
+#         height = int(frame.shape[0] * 0.5)
+#         resized_frame = cv2.resize(frame, (width, height), interpolation=cv2.INTER_AREA)
+
+#         # Convert the frame to grayscale
+#         gray = cv2.cvtColor(resized_frame, cv2.COLOR_BGR2GRAY)
+
+#         # Detect faces in the frame
+#         faces = face_cascade.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=5, minSize=(30, 30))
+
+#         for (x, y, w, h) in faces:
+#             # Extract the face region and resize it to (224, 224)
+#             face = resized_frame[y:y+h, x:x+w]
+#             resized_face = cv2.resize(face, (224, 224), interpolation=cv2.INTER_AREA)
+
+#             # Make the resized face a numpy array and reshape it to the model's input shape
+#             image = np.asarray(resized_face, dtype=np.float32).reshape(1, 224, 224, 3)
+
+#             # Normalize the image array
+#             image = (image / 127.5) - 1
+
+#             # Predict the model
+#             prediction = model.predict(image)
+#             index = np.argmax(prediction)
+#             class_name = class_names[index]
+#             confidence_score = prediction[0][index]
+
+#             # Draw the bounding box around the face
+#             cv2.rectangle(frame, (int(x*2), int(y*2)), (int((x+w)*2), int((y+h)*2)), (0, 255, 0), 2)
+
+#             # Display the label near the bounding box
+#             label = f"{class_name[2:]}: {np.round(confidence_score * 100)}%"
+#             cv2.putText(frame, label, (int(x*2), int(y*2)-10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 255, 0), 2)
+
+#         # Encode the frame as JPEG
+#         ret, buffer = cv2.imencode('.jpg', frame)
+        
+#         # Convert the frame to bytes
+#         frame_bytes = buffer.tobytes()
+        
+#         # Yield the frame in the response
+#         yield (b'--frame\r\n'
+#                 b'Content-Type: image/jpeg\r\n\r\n' + frame_bytes + b'\r\n')
+
+
+model = load_model("model/image/keras_model.h5", compile=False)
+class_names = open("model/image/labels.txt", "r").readlines()
+face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
+
+@app.route('/process_image', methods=['POST'])
+def process_image():
+    try:
+        # Mengambil frame bytes dari body request
+        frame_bytes = request.get_data()
+        frame_np = np.frombuffer(frame_bytes, dtype=np.uint8)
+        frame = cv2.imdecode(frame_np, cv2.IMREAD_COLOR)
+
+        # Memeriksa apakah frame valid
+        if frame is None or frame.size == 0:
+            raise ValueError("Frame tidak valid")
+
+        # Meresize frame menjadi setengah ukuran aslinya
+        width = int(frame.shape[1] * 0.5)
+        height = int(frame.shape[0] * 0.5)
+        resized_frame = cv2.resize(frame, (width, height), interpolation=cv2.INTER_AREA)
+        gray = cv2.cvtColor(resized_frame, cv2.COLOR_BGR2GRAY)
+        faces = face_cascade.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=5, minSize=(30, 30))
+
+        for (x, y, w, h) in faces:
+            face = resized_frame[y:y+h, x:x+w]
+            resized_face = cv2.resize(face, (224, 224), interpolation=cv2.INTER_AREA)
+
+            # Make the resized face a numpy array and reshape it to the model's input shape
+            image = np.asarray(resized_face, dtype=np.float32).reshape(1, 224, 224, 3)
+
+            # Normalize the image array
+            image = (image / 127.5) - 1
+
+            # Predict the model
+            prediction = model.predict(image)
+            index = np.argmax(prediction)
+            class_name = class_names[index]
+            confidence_score = prediction[0][index]
+
+            # Draw the bounding box around the face
+            cv2.rectangle(resized_frame, (x, y), (x+w, y+h), (0, 255, 0), 2)
+
+            # Display the label near the bounding box
+            label = f"{class_name[2:]}: {np.round(confidence_score * 100)}%"
+            cv2.putText(resized_frame, label, (x, y-10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 255, 0), 2)
+
+        # Encode frame sebagai format JPEG
+        _, buffer = cv2.imencode('.jpg', resized_frame)
+        frame_data = base64.b64encode(buffer).decode('utf-8')
+
+        response = {'detected': True, 'frame': frame_data}
+        return jsonify(response)
+
+    except ValueError as ve:
+        print('ValueError: {}'.format(ve))
+        return jsonify({'detected': False, 'error': str(ve)})
+
+    except Exception as e:
+        print('Error: {}'.format(e))
+        return jsonify({'detected': False, 'error': 'Terjadi kesalahan'})
 
 
 @app.route('/register-user', methods=["GET", "POST"])
@@ -303,6 +435,7 @@ def basicToken():
 #             db.session.commit()
 
 #             return jsonify(["Update Password Success!"])
+
 @app.route('/reset', methods=['GET', 'POST'])
 def repassword():
     if request.method == "POST":
@@ -353,7 +486,7 @@ def send_reset():
             user = user[0]
 
         if user.email:
-            link = "http://192.168.0.105:5000/reset"
+            link = "reset"
             return jsonify(
                 {
                     'message': f"Link reset berhasil dikirim!",
@@ -406,15 +539,15 @@ class UserAPI(Resource):
         else:
             data = []
             for user in log_data:
-                total = db.session.query(func.count(
-                    Users.level == 'Administrator')).scalar()
+                # total = db.session.query(func.count(
+                #     Users.level == 'Administrator')).scalar()
                 data.append({
                     'email': user.email,
                     'name': user.name,
                     'status_validasi': user.status_validasi,
                     'level': user.level,
                     'craeted_at': user.created_at.strftime('%Y-%m-%d %H:%M:%S'),
-                    'total': total
+                    # 'total': total
                 })
             return data
 
@@ -789,7 +922,7 @@ def save_audio():
         train_ds = train_ds.batch(batch_size)
         train_ds = train_ds.cache().prefetch(AUTOTUNE)
 
-        model = keras.models.load_model('B:\TI Semester 6\Capstone Project Semester 6\web_service\model\model\model-gender-recognition.h5')
+        model = keras.models.load_model('model/model/model-gender-recognition.h5')
 
         # Test Audio
         test_audio = []
@@ -878,7 +1011,37 @@ def save_audio():
             return jsonify(["Audio Gagal dikirim!"])
 
 # Web View
+import mysql.connector
 
+conn = mysql.connector.connect(
+    host="localhost",
+    user="root",
+    password="",
+    database="web_service"
+)
+
+cur = conn.cursor()
+# ----------------- Gender ------------------ #
+query = "SELECT * FROM gender"
+df = pd.read_sql_query(query, conn)
+
+@app.route('/grafik-jeniskelamin')
+def get_data():
+    gender_counts = df['jenis_kelamin'].value_counts()
+    data = gender_counts.to_dict()
+    return jsonify(data)
+
+@app.route('/grafik-rentangumur')
+def get_rentang():
+    rentang_counts = df['rentang_umur'].value_counts()
+    rentang = rentang_counts.to_dict()
+    return jsonify(rentang)
+
+@app.route('/grafik-label')
+def get_label():
+    label_counts = df['label'].value_counts()
+    label = label_counts.to_dict()
+    return jsonify(label)
 
 @app.route('/webview', methods=['GET'])
 def webview():
@@ -897,18 +1060,19 @@ def history_gender():
     return render_template('data_gender.html', genders=all_gender)
 
 
-@app.route('/webview/grafik')
-def grafik_gender():
-    process = subprocess.Popen(['streamlit', 'run', '--server.address',
-                               '192.168.0.105', 'grafik/streamlit.py'], stdout=subprocess.PIPE)
-    return Response(iter(process.stdout.readline, b''), mimetype='text/plain')
+# @app.route('/webview/grafik')
+# def grafik_gender():
+#     process = subprocess.Popen(['streamlit', 'run', '--server.address',
+#                                '172.20.10.2', 'grafik/streamlit.py'], stdout=subprocess.PIPE)
+#     return Response(iter(process.stdout.readline, b''), mimetype='text/plain')
 
 
-@app.route('/webview/analisis')
-def analisis():
-    process = subprocess.Popen(['streamlit', 'run', '--server.address',
-                               '192.168.0.105', 'grafik/total.py'], stdout=subprocess.PIPE)
-    return Response(iter(process.stdout.readline, b''), mimetype='text/plain')
+# @app.route('/webview/analisis')
+# def analisis():
+#     process = subprocess.Popen(['streamlit', 'run', '--server.address',
+#                                '172.20.10.2', 'grafik/total.py'], stdout=subprocess.PIPE)
+#     return Response(iter(process.stdout.readline, b''), mimetype='text/plain')
+
 
 # --------------------------------- Streamlit --------------------------- #
 
@@ -916,4 +1080,4 @@ def analisis():
 if __name__ == '__main__':
     # app.run(ssl_context='adhoc', debug=True)
     # app.run(debug=True, host='192.168.136.106', use_reloader=False)
-    app.run(host='192.168.55.106')
+    app.run(debug=True, host='192.168.30.106', use_reloader=False)
